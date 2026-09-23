@@ -20,68 +20,73 @@ class AttendeeController extends Controller
     }
 
     public function attend(Request $request)
-    {
-        // Validate input
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email',
-        ]);
+{
+    // Validate input
+    $validator = Validator::make($request->all(), [
+        'email' => 'required|email|exists:users,email',
+        'type' => 'required|string|max:255',
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Validation Error',
-                'status_code' => 422,
-                'data' => $validator->errors()
-            ], 422);
-        }
-
-        // Find the user by email
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user) {
-            return response()->json([
-                'status' => false,
-                'message' => 'User not found',
-                'status_code' => 404,
-                'data' => null
-            ], 404);
-        }
-
-        // Check for existing attendance within the last 5 minutes
-        $latestAttendance = Attendee::where('user_id', $user->id)
-            ->latest('created_at')
-            ->first();
-
-        if ($latestAttendance) {
-            $createdAt = Carbon::parse($latestAttendance->created_at);
-            $now = Carbon::now();
-
-            if ($now->diffInMinutes($createdAt) <= 5) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'User has already attended within the last 5 minutes.',
-                    'status_code' => 202,
-                    'data' => null
-                ], 202);
-            }
-        }
-
-        // Record new attendance
-        $attendee = Attendee::create(['user_id' => $user->id]);
-
+    if ($validator->fails()) {
         return response()->json([
-            'status' => true,
-            'message' => 'Attendance recorded successfully.',
-            'status_code' => 200,
-            'data' => [
-                'id' => $attendee->id,
-                'user_id' => $attendee->user_id,
-                'user_name' => $user->name,
-                'user_email' => $user->email,
-                'created_at' => $attendee->created_at,
-            ]
-        ], 200);
+            'status' => false,
+            'message' => 'Validation Error',
+            'status_code' => 422,
+            'data' => $validator->errors()
+        ], 422);
     }
+
+    // Find the user by email
+    $user = User::where('email', $request->email)->first();
+
+    if (!$user) {
+        return response()->json([
+            'status' => false,
+            'message' => 'User not found',
+            'status_code' => 404,
+            'data' => null
+        ], 404);
+    }
+
+    // Check for existing attendance within the last 5 minutes
+    $latestAttendance = Attendee::where('user_id', $user->id)
+        ->latest('created_at')
+        ->first();
+
+    if ($latestAttendance) {
+        $createdAt = Carbon::parse($latestAttendance->created_at);
+        $now = Carbon::now();
+
+        if ($now->diffInMinutes($createdAt) <= 5) {
+            return response()->json([
+                'status' => false,
+                'message' => 'User has already attended within the last 5 minutes.',
+                'status_code' => 202,
+                'data' => null
+            ], 202);
+        }
+    }
+
+    // Record new attendance
+    $attendee = Attendee::create([
+        'user_id' => $user->id,
+        'type' => $request->type,
+    ]);
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Attendance recorded successfully.',
+        'status_code' => 200,
+        'data' => [
+            'id' => $attendee->id,
+            'user_id' => $attendee->user_id,
+            'type' => $attendee->type,
+            'user_name' => $user->name,
+            'user_email' => $user->email,
+            'created_at' => $attendee->created_at,
+        ]
+    ], 200);
+}
     /**
      * Store a newly created attendee in storage.
      */
@@ -259,10 +264,12 @@ public function storeBadgePrint(Request $request)
 {
     $request->validate([
         'user_id' => 'required|integer|exists:users,id',
+        'type' => 'required|string|max:255',
     ]);
 
     $badgePrintId = DB::table('badge_prints')->insertGetId([
         'user_id' => $request->user_id,
+        'type' => $request->type,
         'created_at' => now(),
         'updated_at' => now(),
     ]);
@@ -274,6 +281,7 @@ public function storeBadgePrint(Request $request)
         'data' => [
             'id' => $badgePrintId,
             'user_id' => $request->user_id,
+            'type' => $request->type,
         ],
     ], 200);
 }
@@ -294,6 +302,52 @@ public function getBadgePrintStats()
         'data' => [
             'total_badges_printed' => $totalBadgePrints,
             'unique_users_printed' => $uniqueUsersPrinted,
+        ],
+    ], 200);
+}
+
+public function getUserByEmail(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email',
+    ]);
+
+    $user = DB::table('users')
+        ->select(
+            'name',
+            'email',
+            'hospital',
+            'department',
+            'speciality',
+            'profession',
+            'jobTitle',
+            'phone'
+        )
+        ->where('email', $request->email)
+        ->first();
+
+    if (!$user) {
+        return response()->json([
+            'status' => false,
+            'message' => 'User not found',
+            'status_code' => 404,
+            'data' => null,
+        ], 404);
+    }
+
+    return response()->json([
+        'status' => true,
+        'message' => 'User details retrieved successfully',
+        'status_code' => 200,
+        'data' => [
+            'name' => $user->name,
+            'email' => $user->email,
+            'hospital' => $user->hospital,
+            'department' => $user->department,
+            'speciality' => $user->speciality,
+            'profession' => $user->profession,
+            'job_title' => $user->jobTitle,
+            'phone' => $user->phone,
         ],
     ], 200);
 }

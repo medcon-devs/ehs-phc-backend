@@ -10,7 +10,7 @@ class Attendee extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id']; // Fields that are mass assignable
+    protected $fillable = ['user_id', 'type']; // Fields that are mass assignable
 
     // Ensure created_at is shown in Dubai time
     public function getCreatedAtAttribute($value)

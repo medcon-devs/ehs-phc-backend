@@ -67,6 +67,7 @@ Route::group(['prefix' => 'v1'], function () {
         Route::delete('/attendees/delete', [AttendeeController::class, 'deleteAttendee']);
         Route::post('/badge-prints', [AttendeeController::class, 'storeBadgePrint']);
         Route::get('/badge-prints/stats', [AttendeeController::class, 'getBadgePrintStats']);
+        Route::get('/user/details-by-email', [AttendeeController::class, 'getUserByEmail']);
         Route::post('usersbulk', [JotformWebhookController::class, 'bulkStore']);
     }); 
 });
